@@ -39,8 +39,8 @@ start_link_stop_test(_) ->
     end.
 
 multiple_task_queues_test(_) ->
-    {ok, TaskQueue1} = task_queue:start_link(test_worker, []),
-    {ok, TaskQueue2} = task_queue:start_link(test_worker, []),
+    {ok, TaskQueue1} = task_queue:start_link(test_worker, [], [{task_manager, q11}]),
+    {ok, TaskQueue2} = task_queue:start_link(test_worker, [], [{task_manager, q22}]),
     ?assertNotEqual(TaskQueue1, TaskQueue2).
 
 sup_kill_test(_) ->
@@ -112,8 +112,12 @@ start_and_get_supervisor() ->
 
 start_and_get_supervisor(Options) ->
     ProcessCountBefore = erlang:system_info(process_count),
-    {ok, TaskQueue} = task_queue:start(test_worker, [], Options),
+    {ok, TaskQueue} = task_queue:start(test_worker, [], [{task_manager, gen_queue_name()} | Options]),
     ProcessCountAfter = erlang:system_info(process_count),
     ?assert(ProcessCountAfter > ProcessCountBefore),
-    {links, [TaskQueueSup]} = erlang:process_info(TaskQueue, links),
+    {links, [TaskQueueSup]} = erlang:process_info(whereis(TaskQueue), links),
     TaskQueueSup.
+
+gen_queue_name() ->
+    {A,B,C} = erlang:timestamp(),
+    list_to_atom(lists:flatten(io_lib:format("~p.~p.~p",[A,B,C]))).

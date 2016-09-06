@@ -31,7 +31,12 @@
 %%%===================================================================
 
 start_link(Options) ->
-    gen_server:start_link(?MODULE, Options, []).
+  case proplists:get_value(task_manager, Options) of
+    undefined ->
+      gen_server:start_link(?MODULE, Options, []);
+    TaskManager ->
+      gen_server:start_link({local, TaskManager}, ?MODULE, Options, [])
+  end.
 
 %%%===================================================================
 %%% gen_server callbacks

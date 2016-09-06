@@ -32,7 +32,8 @@ behaviour_info_test(_) ->
 empty_queue_test(_) ->
     {ok, TaskQueue} = task_queue:start(test_worker, []),
     ?assertEqual(0, task_queue:len(TaskQueue)),
-    ?assertEqual(true, task_queue:is_empty(TaskQueue)).
+    ?assertEqual(true, task_queue:is_empty(TaskQueue)),
+    task_queue:stop(TaskQueue).
 
 task_queue_in_test(_) ->
     in_in_r_test(in).
@@ -60,7 +61,8 @@ task_order_test(_) ->
         Msg3 -> ?assertEqual({task_complete, <<"in2">>}, Msg3)
     after 500 ->
         throw(timeout3)
-    end.
+    end,
+    task_queue:stop(TaskQueue).
 
 worker_state_test(_) ->
     {ok, TaskQueue} = task_queue:start(test_worker, []),
@@ -79,7 +81,8 @@ worker_state_test(_) ->
             ?assert(TasksCounter < 90)
     after 100 ->
         throw(timeout)
-    end.
+    end,
+    task_queue:stop(TaskQueue).
 
 worker_args_test(_) ->
     InitArgs = [arg1, arg2, arg3],
@@ -90,7 +93,8 @@ worker_args_test(_) ->
             ?assertEqual(InitArgs, Result)
     after 100 ->
         throw(timeout)
-    end.
+    end,
+    task_queue:stop(TaskQueue).
 
 queue_length_test(_) ->
     WorkersNum = 42,
@@ -100,7 +104,8 @@ queue_length_test(_) ->
     [ task_queue:in({sleep, 1000}, TaskQueue) || _N <- lists:seq(1,MessagesNum) ],
     timer:sleep(100),
     ?assertEqual(MessagesNum - WorkersNum, task_queue:len(TaskQueue)),
-    ?assertEqual(false, task_queue:is_empty(TaskQueue)).
+    ?assertEqual(false, task_queue:is_empty(TaskQueue)),
+    task_queue:stop(TaskQueue).
 
 unique_tasks_test(_) ->
     WorkersNum = 42,
@@ -116,26 +121,29 @@ unique_tasks_test(_) ->
         Uniq <- lists:seq(1, UniqueMessagesNum) ],
     timer:sleep(100),
     ?assert(task_queue:len(TaskQueue) < MessagesNum - WorkersNum),
-    ?assertNotEqual(UniqueMessagesNum - WorkersNum, task_queue:len(TaskQueue)).
+    ?assertNotEqual(UniqueMessagesNum - WorkersNum, task_queue:len(TaskQueue)),
+    task_queue:stop(TaskQueue).
 
 multiple_queues_test(_) ->
     ArgsOfQueueA = [ queue_a ],
     ArgsOfQueueB = [ queue_a ],
-    {ok, TaskQueueA} = task_queue:start(test_worker, ArgsOfQueueA),
-    {ok, TaskQueueB} = task_queue:start(test_worker, ArgsOfQueueB),
+    {ok, TaskQueueA} = task_queue:start(test_worker, ArgsOfQueueA, [{task_manager, q1}]),
+    {ok, TaskQueueB} = task_queue:start(test_worker, ArgsOfQueueB, [{task_manager, q2}]),
     task_queue:in({get_init_args, self()}, TaskQueueA),
     task_queue:in({get_init_args, self()}, TaskQueueB),
     receive
         {task_complete, ArgsOfQueueA} -> ?assert(true)
-    after 100 ->
+    after 200 ->
         throw(timeout1)
     end,
     receive
         {task_complete, ArgsOfQueueB} -> ?assert(true);
         Msg -> throw({unexpected_message, Msg})
-    after 100 ->
+    after 200 ->
         throw(timeout2)
-    end.
+    end,
+    task_queue:stop(TaskQueueA),
+    task_queue:stop(TaskQueueB).
 
 queue_stopped_test(_) ->
     {ok, TaskQueue} = task_queue:start(test_worker, []),
@@ -174,7 +182,8 @@ monitor_test(_) ->
         {task_complete, <<"task2">>} -> ?assert(true)
     after 100 ->
         throw(timeout2)
-    end.
+    end,
+    task_queue:stop(TaskQueue).
 
 md5_bruteforce_test(_) ->
     Hash = <<96,217,158,88,214,106,94,15,79,137,236,61,221,29,154,128>>,
@@ -186,7 +195,8 @@ md5_bruteforce_test(_) ->
         {password_found, Pass} -> ?assertEqual("rome", Pass)
     after 10000 ->
         throw(timeout)
-    end.
+    end,
+    task_queue:stop(TaskQueue).
 
 %%%===================================================================
 %%% Internal functions
@@ -201,5 +211,6 @@ in_in_r_test(Method) ->
             ?assertEqual(true, task_queue:is_empty(TaskQueue))
     after 100 ->
         throw(timeout)
-    end.
+    end,
+    task_queue:stop(TaskQueue).
 
