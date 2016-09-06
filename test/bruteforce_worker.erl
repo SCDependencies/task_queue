@@ -17,7 +17,7 @@ init(_Args) ->
 process_task({md5_bruteforce, Postfix, Alph, Hash, Receiver}, State) ->
     [ begin 
         Password = [Prefix1, Prefix2, Prefix3 | Postfix],
-        case crypto:md5(Password) =:= Hash of
+        case crypto:hash(md5, Password) =:= Hash of
             true ->
                 Receiver ! { password_found, Password };
             false ->
